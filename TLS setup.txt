@@ -24,5 +24,38 @@ subjectAltName=@alt_names
 [alt_names]
 DNS.1=testtls
 
-openssl x509 -req -in testtls.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial -out testtls.crt -days 825 -sha256 -extfile testtls.ext // certificate for sev site
+openssl x509 -req -in testtls.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial -out testtls.crt -days 825 -sha256 -extfile testtls.ext // certificate for dev site
 
+---
+
+mTLS
+
+ssl_client_certificate /etc/nginx/client_certs/ca.crt;
+ssl_verify_client      optional;
+
+    # ...
+
+
+location / {
+	if ($ssl_client_verify != SUCCESS) {
+        return 403;
+    }
+}
+
+openssl genrsa -out clienta.key 2048 // private key for client
+
+openssl req -new -key clienta.key -out clienta.csr // CSR for client
+
+clienta.ext :
+
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName=@alt_names
+
+[alt_names]
+DNS.1=testtls
+
+openssl x509 -req -in clienta.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial -out clienta.crt -days 825 -sha256 -extfile clienta.ext// certificate for client
+
+openssl pkcs12 -export -clcerts -in client/heiko.crt -inkey client/heiko.key -out client/heiko.p12
