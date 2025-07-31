@@ -1,0 +1,28 @@
+openssl genrsa -des3 -out myCA.key 2048 // private key to become a local CA
+
+openssl req -x509 -new -nodes -key myCA.key -sha256 -days 1825 -out myCA.pem // root certificate
+
+sudo apt-get install -y ca-certificates
+
+cp myCA.pem /usr/local/share/ca-certificates/myCA.crt
+
+sudo update-ca-certificates
+
+awk -v cmd='openssl x509 -noout -subject' '/BEGIN/{close(cmd)};{print | cmd}' < /etc/ssl/certs/ca-certificates.crt | grep Hellfish // not required
+
+openssl genrsa -out testtls.key 2048 // private key for dev site
+
+openssl req -new -key testtls.key -out testtls.csr // CSR for dev site
+
+testtls.ext :
+
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage=digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName=@alt_names
+
+[alt_names]
+DNS.1=testtls
+
+openssl x509 -req -in testtls.csr -CA myCA.pem -CAkey myCA.key -CAcreateserial -out testtls.crt -days 825 -sha256 -extfile testtls.ext // certificate for sev site
+
